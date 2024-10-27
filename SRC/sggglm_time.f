@@ -180,7 +180,7 @@
 *> \ingroup realOTHEReigen
 *
 *  =====================================================================
-      SUBROUTINE SGGGLM_QZ( N, M, P, A, LDA, B, LDB, D, X, Y, WORK,
+      SUBROUTINE SGGGLM_TIME( N, M, P, A, LDA, B, LDB, D, X, Y, WORK,
      $                   LWORK, INFO )
 *
 *  -- LAPACK driver routine --
@@ -205,14 +205,16 @@
       LOGICAL            LQUERY
       INTEGER            I, LOPT, LWKMIN, LWKOPT, NB, NB1, NB2, NB3,
      $                   NB4, NP
+      DOUBLE PRECISION   TIME( 2 ), START, OVER
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           SCOPY, SGEMV, SGGQRF_QL, SORMQR, SORMRQ, STRTRS,
-     $                   XERBLA
+      EXTERNAL           SCOPY, SGEMV, SGGQRF_TIME, SORMQR, SORMRQ,
+     $                   XERBLA, STRTRS
 *     ..
 *     .. External Functions ..
       INTEGER            ILAENV
-      EXTERNAL           ILAENV
+      DOUBLE PRECISION   TIC
+      EXTERNAL           ILAENV TIC
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          INT, MAX, MIN
@@ -286,9 +288,13 @@
 *     where R11 and T22 are upper triangular, and Q and Z are
 *     orthogonal.
 *
-      CALL SGGQRF_QL( N, M, P, A, LDA, WORK, B, LDB, WORK( M+1 ),
+      START = TIC()
+      CALL SGGQRF_TIME( N, M, P, A, LDA, WORK, B, LDB, WORK( M+1 ),
      $             WORK( M+NP+1 ), LWORK-M-NP, INFO )
-      LOPT = WORK( M+NP+1 )
+      LOPT = INT( WORK( M+NP+1 ) )
+      OVER = TIC()
+      PRINT *, OVER-START
+      START = TIC()
 *
 *     Update left-hand-side vector d = Q**T*d = ( d1 ) M
 *                                               ( d2 ) N-M
@@ -296,6 +302,8 @@
       CALL SORMQR( 'Left', 'Transpose', N, 1, M, A, LDA, WORK, D,
      $             MAX( 1, N ), WORK( M+NP+1 ), LWORK-M-NP, INFO )
       LOPT = MAX( LOPT, INT( WORK( M+NP+1 ) ) )
+      OVER = TIC()
+      PRINT *, OVER-START
 *
 *     Solve T22*y2 = d2 for y2
 *
@@ -343,7 +351,7 @@
       CALL SORMRQ( 'Left', 'Transpose', P, 1, NP,
      $             B( MAX( 1, N-P+1 ), 1 ), LDB, WORK( M+1 ), Y,
      $             MAX( 1, P ), WORK( M+NP+1 ), LWORK-M-NP, INFO )
-*      WORK( 1 ) = M + NP + MAX( LOPT, INT( WORK( M+NP+1 ) ) )
+      WORK( 1 ) = M + NP + MAX( LOPT, INT( WORK( M+NP+1 ) ) )
 *
       RETURN
 *

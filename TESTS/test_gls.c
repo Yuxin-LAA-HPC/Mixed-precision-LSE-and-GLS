@@ -5,12 +5,13 @@
 #include "../include/mpls.h"
 #include "../include/my_wtime.h"
 
-int test_gls(int n, int m, int p, double *timesum)
+int test_gls(int n, int m, int p, double cond, double *timesum)
 {
-    int i, j, incx = 1;
-    int lwork = 2*m*n+2*n+m+p, lworks = 2*n*m+2*n*p+n*3+m*3+p*2+MAX(n,p)*65;
+    printf("%% Test matrix with n = %d, m = %d, p = %d\n", n, m, p);
+    int incx = 1, restart = MIN(300, m+n+p), info, mtemp;
+    int lwork = n*m + 2*n*p + 4*n + 4*m + 3*p + MAX(n, p)*256 + 9*(m+n+p) + (m+n+p)*restart + 6*restart + restart*restart + 5*n*p;
+    int lworks = n*m + 2*n*p + 4*n + 3*m + 2*p + MAX(n, p)*256 + 5*n*p;
     double *AB = (double *)calloc((m+p)*n, sizeof(double));
-    double *A = AB, *B = A + m*n;
     double *x = (double *)calloc(m, sizeof(double));
     double *y = (double *)calloc(p, sizeof(double));
     double *d = (double *)calloc(n, sizeof(double));
@@ -21,64 +22,67 @@ int test_gls(int n, int m, int p, double *timesum)
     double *sva = (double *)calloc(n, sizeof(double));
     float *works = (float *)calloc(lworks, sizeof(float));
     int *iseed = (int *)calloc(4, sizeof(int));
-    double rcond, norma, normb, cond;
-    int rank, oneint = 1, twoint = 2, info;
-    int ranko = 4, irsigm, idist, mode, mtemp;
     double start, over;
-    //double *timesum = (double *)calloc(6, sizeof(double));
 
     // Generate testing matrix.
     srand(0);
-    irsigm = 0;
-    idist = 3;
-    mode = 5;
-    cond = 1e6;
-    iseed[0] = rand()%1000;
-    iseed[1] = rand()%1000;
-    iseed[2] = rand()%1000;
-    iseed[3] = rand()%1000;
-    dlatm1_(&mode, &cond, &irsigm, &idist, iseed, sva, &n, &info);
     mtemp = m+p;
-    dqrt13_(&oneint, &n, &mtemp, AB, &n, &norma, iseed);
-    printf("%%norm of AB: %.6f\n", norma);
+    gen_mat(mtemp, n, cond, work, work+mtemp*n, lwork);
+    for (int i = 0; i < mtemp; i++)
+        for (int j = 0; j < n; j++)
+            AB[i*n + j] = work[j*mtemp + i];
     for (int i = 0; i < n; i++)
         d[i] = 1.0;
 
-    dlacpy_("A", &n, &m, A, &n, Acopy, &n, 1);
-    dlacpy_("A", &n, &p, B, &n, Bcopy, &n, 1);
+    // Test the mixed precision generalized LS algorithm by using traditional
+    // iterative refinement.
+    dlacpy_("A", &n, &m, AB, &n, Acopy, &n, 1);
+    dlacpy_("A", &n, &p, &AB[m*n], &n, Bcopy, &n, 1);
     dcopy_(&n, d, &incx, dcopy, &incx);
-    //dprintmat("A", n, m, A, n);
-    //dprintmat("B", n, p, B, n);
-    //dprintmat("d", n, 1, d, n);
     start = tic();
-    mpgls(n, m, p, Acopy, n, Bcopy, n, dcopy, x, y, works, lworks, work,
-            lwork);
+    mpgls(n, m, p, Acopy, n, Bcopy, n, dcopy, x, y, works,
+            lworks, work, lwork);
     over = tic();
     double timemp = over-start;
     printf("%%Time of mpgls: %.6f\n", over-start);
-    check_accuracy_gls(n, m, p, A, n, B, n, d, x, y);
     for (int i = 0; i < 5; i++)
         timesum[i] = work[i];
-    //dprintmat("x", m, 1, x, m);
-    //dprintmat("y", p, 1, y, p);
+    // Check accuracy.
+    check_accuracy_gls(n, m, p, AB, n, &AB[m*n], n, d, x, y, work);
 
-    dlacpy_("A", &n, &m, A, &n, Acopy, &n, 1);
-    dlacpy_("A", &n, &p, B, &n, Bcopy, &n, 1);
+    // Test the mixed precision generalized LS algorithm by using GMRES-based
+    // iterative refinement with two-side preconditioning.
+    dlacpy_("A", &n, &m, AB, &n, Acopy, &n, 1);
+    dlacpy_("A", &n, &p, &AB[m*n], &n, Bcopy, &n, 1);
+    dcopy_(&n, d, &incx, dcopy, &incx);
+    start = tic();
+    mpgls_gmres_twoside(n, m, p, Acopy, n, Bcopy, n, dcopy, x, y, works,
+        lworks, work, lwork);
+    over = tic();
+    double timemp_gmres = over-start;
+    printf("%%Time of mpgls_gmres_twoside: %.6f\n", over-start);
+    for (int i = 0; i < 4; i++)
+        timesum[5+i] = work[i];
+    // Check accuracy.
+    check_accuracy_gls(n, m, p, AB, n, &AB[m*n], n, d, x, y, work);
+
+    // Test the fixed precision (double precision) LAPACK subroutine.
+    dlacpy_("A", &n, &m, AB, &n, Acopy, &n, 1);
+    dlacpy_("A", &n, &p, &AB[m*n], &n, Bcopy, &n, 1);
     dcopy_(&n, d, &incx, dcopy, &incx);
     start = tic();
     dggglm_(&n, &m, &p, Acopy, &n, Bcopy, &n, dcopy, x, y, work,
            &lwork, &info);
     over = tic();
     double timed = over-start;
-    timesum[5] = timed;
-    printf("%%Time of dggglm: %.6f\n", over-start);
-    check_accuracy_gls(n, m, p, A, n, B, n, d, x, y);
+    timesum[9] = timed;
+    printf("%% Time of dggglm: %.6f\n", over-start);
+    // Check accuracy.
+    check_accuracy_gls(n, m, p, AB, n, &AB[m*n], n, d, x, y, work);
     printf("%% ratio: %.4f\n", (timed-timemp)/timed);
-    dprintmat("timesubsum", 6, 1, timesum, 6);
-    //dprintmat("x", m, 1, x, m);
-    //dprintmat("y", p, 1, y, p);
+    printf("%% ratio_gmres: %.4f\n", (timed-timemp_gmres)/timed);
+    dprintmat("timesubsum", 10, 1, timesum, 10);
 
-    //free(timesum);
     free(AB);
     free(y);
     free(d);
@@ -93,60 +97,51 @@ int test_gls(int n, int m, int p, double *timesum)
     return 0;
 }
 
-int test()
+int test(int times_mn, int times_pm, int m0, double cond, double *time)
 {
-    double *time = (double *)calloc(6*4*6, sizeof(double));
-    double r_m, r_p;
-    int n, m, p, n0 = 1024, m0 = 512;
+    int num = 3;
+    int m = m0, n = 1024, p;
 
-    r_m = 2, r_p = 1;
-    n = n0;
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < num; i++)
     {
-        n = n*2, m = n/r_m, p = (n-m)*r_p;
-        test_gls(n, m, p, time+i*6);
+        m = m + 1024; n = m*times_mn; p = m*times_pm;
+        //p = p*2; n = p*times_np; m = n*times_mn;
+        //n = n + 1024; p = n*times_mn; m = n/times_pm;
+        test_gls(n, m, p, cond, time+10*i);
     }
+    dprintmat("time", 10, 3, time, 10);
+    return 0;
+}
 
-    r_m = 4, r_p = 1;
-    n = n0, m = m0;
-    for (int i = 0; i < 4; i++)
-    {
-        n = n*2, m = n/r_m, p = (n-m)*r_p;
-        test_gls(n, m, p, time+24+i*6);
-    }
+int test_nlarge(int times_mn, int times_pm, int m0, double cond, double *time)
+{
+    int num = 3;
+    int m = m0, n, p;
 
-    r_m = 2, r_p = 2;
-    n = n0, m = m0;
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < num; i++)
     {
-        n = n*2, m = n/r_m, p = (n-m)*r_p;
-        test_gls(n, m, p, time+24*2+i*6);
+        m = m + 1024; n = m*times_mn; p = n - m + 128*(i+1);
+        test_gls(n, m, p, cond, time+10*i);
     }
+    dprintmat("time", 10, 3, time, 10);
+    return 0;
+}
 
-    r_m = 4, r_p = 2;
-    n = n0, m = m0;
-    for (int i = 0; i < 4; i++)
-    {
-        n = n*2, m = n/r_m, p = (n-m)*r_p;
-        test_gls(n, m, p, time+24*3+i*6);
-    }
+int test_all(double cond)
+{
+    double *time = (double *)calloc(10*3*6, sizeof(double));
 
-    r_m = 2, r_p = 3;
-    n = n0, m = m0;
-    for (int i = 0; i < 4; i++)
-    {
-        n = n*2, m = n/r_m, p = (n-m)*r_p;
-        test_gls(n, m, p, time+24*4+i*6);
-    }
+    test(8, 32,  0, cond, time);
+    test(8, 64,  0, cond, time+10*3);
+    test(10, 32,  0, cond, time+10*3*2);
+    test(10, 64,  0, cond, time+10*3*3);
+    test(12, 32, 0, cond, time+10*3*4);
+    test(12, 64, 0, cond, time+10*3*5);
+    //test_nlarge(4, 3, 0, cond, time+10*3*3);
+    //test_nlarge(5, 4, 0, cond, time+10*3*4);
+    //test_nlarge(6, 5, 0, cond, time+10*3*5);
 
-    r_m = 4, r_p = 3;
-    n = n0, m = m0;
-    for (int i = 0; i < 4; i++)
-    {
-        n = n*2, m = n/r_m, p = (n-m)*r_p;
-        test_gls(n, m, p, time+24*5+i*6);
-    }
-    dprintmat("timesum", 24, 6, time, 24);
+    dprintmat("timeall", 10, 18, time, 10);
 
     free(time);
     return 0;
@@ -155,19 +150,14 @@ int test()
 int main (int argc, char **argv)
 {
     // m <= n <= m+p
-    test();
-    //double *time = (double *)calloc(6*4*6, sizeof(double));
-    //int n = 4096, m = 1024*2, p = n-m+128;
-    //n = 10;
-    //m = 6;
-    //p = 5;
-    //test_gls(n, m, p);
-    //test_gls(n, m, p);
-    //n = 4096*2, m = 1024*4, p = n-m+128*2;
-    //test_gls(n, m, p);
-    //n = 4096*4, m = 1024*8, p = n-m+128*4;
-    //test_gls(n, m, p);
-    //n = 4096, m = n, p = 128;
-    //test_gls(n, m, p);
+    double *time = (double *)calloc(6*4*6, sizeof(double));
+    int m = 1024;
+    // Warm up.
+    test_gls(m*2, m, m*4, 1e5, time);
+    free(time);
+
+    // Start tests.
+    test_all(1e3);
+
     return 0;
 }

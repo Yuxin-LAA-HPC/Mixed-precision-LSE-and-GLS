@@ -87,6 +87,9 @@ extern void dgemv_(char *TRANS, int *M, int *N, double *ALPHA, double *A,
         int *LDA, double *X, int *INCX, double *BETA, double *Y, int *INCY,
         int);
 
+extern void dtrsv_(char *UPLO, char *TRANS, char *DIAG, int *N, double *A,
+	int *LDA, double *X, int *INCX, int, int, int);
+
 extern void strmv_(char *UPLO, char *TRANS, char *DIAG, int *N, float *A,
         int *LDA, float *X, int *INCX, int, int, int);
 extern void dtrmv_(char *UPLO, char *TRANS, char *DIAG, int *N, double *A,
@@ -104,6 +107,11 @@ extern void cgeqrf_(int *M, int *N, cplx A[], int *LDA, cplx TAU[],
 extern void zgeqrf_(int *M, int *N, zplx A[], int *LDA, zplx TAU[],
         zplx WORK[], int *LWORK, int *INFO);
 
+extern void sgerqf_(int *M, int *N, float A[], int *LDA, float TAU[],
+        float WORK[], int *LWORK, int *INFO);
+extern void dgerqf_(int *M, int *N, double A[], int *LDA, double TAU[],
+        double WORK[], int *LWORK, int *INFO);
+
 extern void sgelqf_(int *M, int *N, float A[], int *LDA, float TAU[],
         float WORK[], int *LWORK, int *INFO);
 extern void dgelqf_(int *M, int *N, double A[], int *LDA, double TAU[],
@@ -112,6 +120,11 @@ extern void cgelqf_(int *M, int *N, cplx A[], int *LDA, cplx TAU[],
         cplx WORK[], int *LWORK, int *INFO);
 extern void zgelqf_(int *M, int *N, zplx A[], int *LDA, zplx TAU[],
         zplx WORK[], int *LWORK, int *INFO);
+
+extern void sgeqlf_(int *M, int *N, float A[], int *LDA, float TAU[],
+        float WORK[], int *LWORK, int *INFO);
+extern void dgeqlf_(int *M, int *N, double A[], int *LDA, double TAU[],
+        double WORK[], int *LWORK, int *INFO);
 
 extern void slacpy_(char *UPLO, int *M, int *N, float A[], int *LDA,
         float B[], int *LDB, int);
@@ -144,6 +157,9 @@ extern void zunmqr_(char *SIDE, char *TRANS, int *M, int *N, int *K,
         zplx A[], int *LDA, zplx TAU[], zplx C[], int *LDC, zplx WORK[],
         int *LWORK, int *INFO, int, int);
 
+extern void sormql_(char *SIDE, char *TRANS, int *M, int *N, int *K,
+        float A[], int *LDA, float TAU[], float C[], int *LDC, float WORK[],
+        int *LWORK, int *INFO, int, int);
 extern void sormlq_(char *SIDE, char *TRANS, int *M, int *N, int *K,
         float A[], int *LDA, float TAU[], float C[], int *LDC, float WORK[],
         int *LWORK, int *INFO, int, int);
@@ -160,6 +176,9 @@ extern void zunmlq_(char *SIDE, char *TRANS, int *M, int *N, int *K,
 extern void sormrq_(char *SIDE, char *TRANS, int *M, int *N, int *K,
         float A[], int *LDA, float TAU[], float C[], int *LDC, float WORK[],
         int *LWORK, int *INFO, int, int);
+extern void dormrq_(char *SIDE, char *TRANS, int *M, int *N, int *K,
+        double A[], int *LDA, double TAU[], double C[], int *LDC,
+	double WORK[], int *LWORK, int *INFO, int, int);
 
 extern void ssyev_(char *JOBZ, char *UPLO, int *N, float A[], int *LDA,
         float W[], float WORK[], int *LWORK, int *INFO, int, int);
@@ -301,6 +320,12 @@ extern void sggglm_(int *N, int *M, int *P, float *A, int *LDA, float *B,
 extern void dggglm_(int *N, int *M, int *P, double *A, int *LDA, double *B,
         int *LDB, double *D, double *X, double *Y, double *WORK, int *LWORK,
         int *INFO);
+extern void sggglm_time_(int *N, int *M, int *P, float *A, int *LDA, float *B,
+        int *LDB, float *D, float *X, float *Y, float *WORK, int *LWORK,
+        int *INFO);
+extern void dggglm_time_(int *N, int *M, int *P, double *A, int *LDA, double *B,
+        int *LDB, double *D, double *X, double *Y, double *WORK, int *LWORK,
+        int *INFO);
 
 extern void sgglse_qz_(int *M, int *N, int *P, float *A, int *LDA, float *B,
         int *LDB, float *C, float *D, float *X, float *WORK, int *LWORK,
@@ -309,6 +334,7 @@ extern void sgglse_qz_(int *M, int *N, int *P, float *A, int *LDA, float *B,
 extern void sggglm_qz_(int *N, int *M, int *P, float *A, int *LDA, float *B,
         int *LDB, float *D, float *X, float *Y, float *WORK, int *LWORK,
         int *INFO);
+
 #ifdef __cplusplus
 }
 #endif

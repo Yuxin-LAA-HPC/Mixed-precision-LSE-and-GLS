@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../include/mpls_util.h"
 #include "../include/mpls.h"
@@ -18,6 +19,7 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
     start = tic();
 #endif
     float *As, *Bs, *Ts, *ds, *xs, *ys, *zs, *r1s, *r2s, *r3s, *workssub;
+    float *Bstemp;
     int lworkssub, lworksub, info = 0, incx = 1, i;
     int np = MIN(n, p), ntemp = n-m;
     int nsum = m+n+p, pnm = p-n+m, length;
@@ -25,13 +27,14 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
     float onef = 1.0f, ronef = -1.0f;
     double *r1, *r2, *r3, *z, *worksub;
     double normA, normB, normd, normr1, normr2, normr3, normx, normy, normz;
-    double tol = 1e-14;
-    int maxiter = 10;
+    double tol = 1e-13;
+    int maxiter = 40;
 
     As = works;
     Bs = As + n*m;
     Ts = Bs + n*p;
-    ds = Ts + n*p;
+    Bstemp = Ts + n*p;
+    ds = Bstemp + n*p;
     xs = ds + n;
     ys = xs + m;
     zs = ys + p;
@@ -39,7 +42,7 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
     r2s = r1s + p;
     r3s = r2s + n;
     workssub = r3s + m;
-    lworkssub = lworks - n*m - 2*n*p - n*3 - m*2 - p*2;
+    lworkssub = lworks - n*m - 3*n*p - n*3 - m*2 - p*2;
 
     z = work;
     r1 = z + n;
@@ -69,10 +72,12 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
     start = tic();
 #endif
 
+    for (i = 0; i < n; i++)
+        scopy_(&p, &Bs[i], &n, &Bstemp[i*p], &incx);
     // Compute the initial z.
     memset(zs, 0.0f, m*sizeof(float));
     scopy_(&p, ys, &incx, r1s, &incx);
-    sormrq_("L", "N", &p, &incx, &np, &Bs[MAX(n-p, 0)], &n, &workssub[m],
+    sormql_("L", "T", &p, &incx, &np, &Bstemp[MAX(n-p, 0)*p], &p, &workssub[m],
             r1s, &p, &workssub[m+np], &lworkssub, &info, 1, 1);
     strtrs_("U", "T", "N", &ntemp, &incx, &Bs[(m+p-n)*n+m], &n, &r1s[pnm],
             &ntemp, &info, 1, 1, 1);
@@ -117,7 +122,7 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
         normx = dnrm2_(&m, x, &incx);
         normy = dnrm2_(&p, y, &incx);
         normz = dnrm2_(&n, z, &incx);
-        if ((normr1 <= tol*(normy+normB*normz)) && (normr2 <= tol*(normd+normB*normy+normA*normx)) && (normr3 <= tol*(normA*normz)))
+        if ((normr1 <= tol*(normy+normA*normz)) && (normr2 <= tol*(normd+normA*normy+normB*normx)) && (normr3 <= tol*normB*normz))
         {
             printf("%% iter = %d;\n", iter+1);
 #ifdef MEASURETIME
@@ -125,6 +130,7 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
             time[3] = over-start+time[3];
             for (int i = 0; i < 5; i++)
                 work[i] = time[i];
+            free(time);
 #endif
             return 0;
         }
@@ -140,9 +146,8 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
         sormqr_("L", "T", &n, &incx, &m, As, &n, workssub, r2s, &n,
                 &workssub[m+np], &lworkssub, &info, 1, 1);
         // Compute Z*r1s storing in r1s.
-        sormrq_("L", "N", &p, &incx, &np, &Bs[MAX(n-p, 0)], &n,
-                &workssub[m], r1s, &p, &workssub[m+np], &lworkssub, &info,
-                1, 1);
+        sormql_("L", "T", &p, &incx, &np, &Bstemp[MAX(n-p, 0)*p], &p, &workssub[m],
+                r1s, &p, &workssub[m+np], &lworkssub, &info, 1, 1);
         // Compute g1 = (Z*r1s)_1-T_{11}^{T}*h1 storing in (r1s)_1.
         sgemv_("T", &m, &pnm, &ronef, Ts, &n, r3s, &incx, &onef, r1s,
                 &incx, 1);
@@ -167,9 +172,8 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
         // Compute Dz = Q*h and Dy = Z^T*g.
         sormqr_("L", "N", &n, &incx, &m, As, &n, workssub, r2s, &n,
                 &workssub[m+np], &lworkssub, &info, 1, 1);
-        sormrq_("L", "T", &p, &incx, &np, &Bs[MAX(n-p, 0)], &n,
-                &workssub[m], r1s, &p, &workssub[m+np], &lworkssub, &info,
-                1, 1);
+        sormql_("L", "N", &p, &incx, &np, &Bstemp[MAX(n-p, 0)*p], &p, &workssub[m],
+                r1s, &p, &workssub[m+np], &lworkssub, &info, 1, 1);
         // Update x, y, z.
         for (i = 0; i < m; i++)
             x[i] = x[i] + (double)r3s[i];
@@ -188,75 +192,3 @@ int mpgls(int n, int m, int p, double *A, int lda, double *B, int ldb,
     return 0;
 }
 
-int mpgls_old(int n, int m, int p, double *A, int lda, double *B, int ldb,
-        double *D, double *X, double *Y, float *works, double *work,
-        int lwork)
-{
-    float *As, *Bs, *Ds, *Xs, *Ys, *Rs, *workssub;
-    int lworkssub, lworksub, info, incx = 1, i, np = MIN(n, p), ntemp;
-    double one = 1.0, rone = -1.0;
-    float onef = 1.0f, ronef = -1.0f;
-    double *R, *worksub;
-
-    As = works;
-    Bs = As + n*m;
-    Ds = Bs + n*p;
-    Xs = Ds + n;
-    Ys = Xs + m;
-    Rs = Ys + p;
-    workssub = Rs + n;
-    lworkssub = lwork - n*m - n*p - n*2 - m - p;
-
-    R = work;
-    worksub = R + n;
-    lworksub = lwork - n;
-
-    dlag2s_(&n, &m, A, &n, As, &n, &info);
-    dlag2s_(&n, &p, B, &n, Bs, &n, &info);
-    dlag2s_(&n, &incx, D, &n, Ds, &n, &info);
-    dlag2s_(&m, &incx, X, &m, Xs, &m, &info);
-    dlag2s_(&p, &incx, Y, &p, Ys, &p, &info);
-    sggglm_qz_(&n, &m, &p, As, &n, Bs, &n, Ds, Xs, Ys, workssub, &lworkssub,
-            &info);
-
-    slag2d_(&m, &incx, Xs, &m, X, &m, &info);
-    slag2d_(&p, &incx, Ys, &p, Y, &p, &info);
-    lworkssub = lworkssub - m - np;
-    ntemp = n-m;
-    for (int iter = 0; iter < 3000; iter++)
-    {
-        dcopy_(&n, D, &incx, R, &incx);
-        dgemv_("N", &n, &m, &rone, A, &lda, X, &incx, &one, R, &incx, 1);
-        dgemv_("N", &n, &p, &rone, B, &ldb, Y, &incx, &one, R, &incx, 1);
-        dlag2s_(&n, &incx, R, &n, Rs, &n, &info);
-
-        //sprintmat("rs", n, 1, Rs, n);
-        sormqr_("L", "T", &n, &incx, &m, As, &n, workssub, Rs, &n,
-                &workssub[m+np], &lworkssub, &info, 1, 1);
-        strtrs_("U", "N", "N", &ntemp, &incx, &Bs[(m+p-n)*n+m], &n, &Rs[m],
-                &ntemp, &info, 1, 1, 1);
-        scopy_(&ntemp, &Rs[m], &incx, &Ys[m+p-n], &incx);
-        for (i = 0; i < m+p-n; i++)
-            Ys[i] = 0.0f;
-        sgemv_("N", &m, &ntemp, &ronef, &Bs[(m+p-n)*n], &n, &Ys[m+p-n],
-                &incx, &onef, Rs, &incx, 1);
-        strtrs_("U", "N", "N", &m, &incx, As, &n, Rs, &m, &info, 1, 1, 1);
-        scopy_(&m, Rs, &incx, Xs, &incx);
-        sormqr_("L", "T", &p, &incx, &np, &Bs[MAX(n-p, 0)], &n,
-                &workssub[m], Ys, &p, &workssub[m+np], &lworkssub, &info,
-                1, 1);
-
-        //sprintmat("xs", m, 1, Xs, m);
-        //sprintmat("ys", p, 1, Ys, p);
-        //dprintmat("xo", m, 1, X, m);
-        //dprintmat("yo", p, 1, Y, p);
-        for (i = 0; i < m; i++)
-            X[i] = X[i] + (double)Xs[i];
-        for (i = 0; i < p; i++)
-            Y[i] = Y[i] + (double)Ys[i];
-        //dprintmat("x", m, 1, X, m);
-        //dprintmat("y", p, 1, Y, p);
-    }
-
-    return 0;
-}

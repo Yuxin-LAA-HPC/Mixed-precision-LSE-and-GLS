@@ -1,4 +1,4 @@
-*> \brief \b SGGGLM
+*> \brief \b DGGGLM
 *
 *  =========== DOCUMENTATION ===========
 *
@@ -6,26 +6,26 @@
 *            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download SGGGLM + dependencies
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/sggglm.f">
+*> Download DGGGLM + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dggglm.f">
 *> [TGZ]</a>
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/sggglm.f">
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dggglm.f">
 *> [ZIP]</a>
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/sggglm.f">
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dggglm.f">
 *> [TXT]</a>
 *> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
-*       SUBROUTINE SGGGLM( N, M, P, A, LDA, B, LDB, D, X, Y, WORK, LWORK,
+*       SUBROUTINE DGGGLM( N, M, P, A, LDA, B, LDB, D, X, Y, WORK, LWORK,
 *                          INFO )
 *
 *       .. Scalar Arguments ..
 *       INTEGER            INFO, LDA, LDB, LWORK, M, N, P
 *       ..
 *       .. Array Arguments ..
-*       REAL               A( LDA, * ), B( LDB, * ), D( * ), WORK( * ),
+*       DOUBLE PRECISION   A( LDA, * ), B( LDB, * ), D( * ), WORK( * ),
 *      $                   X( * ), Y( * )
 *       ..
 *
@@ -35,7 +35,7 @@
 *>
 *> \verbatim
 *>
-*> SGGGLM solves a general Gauss-Markov linear model (GLM) problem:
+*> DGGGLM solves a general Gauss-Markov linear model (GLM) problem:
 *>
 *>         minimize || y ||_2   subject to   d = A*x + B*y
 *>             x
@@ -86,7 +86,7 @@
 *>
 *> \param[in,out] A
 *> \verbatim
-*>          A is REAL array, dimension (LDA,M)
+*>          A is DOUBLE PRECISION array, dimension (LDA,M)
 *>          On entry, the N-by-M matrix A.
 *>          On exit, the upper triangular part of the array A contains
 *>          the M-by-M upper triangular matrix R.
@@ -100,7 +100,7 @@
 *>
 *> \param[in,out] B
 *> \verbatim
-*>          B is REAL array, dimension (LDB,P)
+*>          B is DOUBLE PRECISION array, dimension (LDB,P)
 *>          On entry, the N-by-P matrix B.
 *>          On exit, if N <= P, the upper triangle of the subarray
 *>          B(1:N,P-N+1:P) contains the N-by-N upper triangular matrix T;
@@ -116,26 +116,26 @@
 *>
 *> \param[in,out] D
 *> \verbatim
-*>          D is REAL array, dimension (N)
+*>          D is DOUBLE PRECISION array, dimension (N)
 *>          On entry, D is the left hand side of the GLM equation.
 *>          On exit, D is destroyed.
 *> \endverbatim
 *>
 *> \param[out] X
 *> \verbatim
-*>          X is REAL array, dimension (M)
+*>          X is DOUBLE PRECISION array, dimension (M)
 *> \endverbatim
 *>
 *> \param[out] Y
 *> \verbatim
-*>          Y is REAL array, dimension (P)
+*>          Y is DOUBLE PRECISION array, dimension (P)
 *>
 *>          On exit, X and Y are the solutions of the GLM problem.
 *> \endverbatim
 *>
 *> \param[out] WORK
 *> \verbatim
-*>          WORK is REAL array, dimension (MAX(1,LWORK))
+*>          WORK is DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *>          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *> \endverbatim
 *>
@@ -145,7 +145,7 @@
 *>          The dimension of the array WORK. LWORK >= max(1,N+M+P).
 *>          For optimum performance, LWORK >= M+min(N,P)+max(N,P)*NB,
 *>          where NB is an upper bound for the optimal blocksizes for
-*>          SGEQRF, SGERQF, SORMQR and SORMRQ.
+*>          DGEQRF, SGERQF, DORMQR and SORMRQ.
 *>
 *>          If LWORK = -1, then a workspace query is assumed; the routine
 *>          only calculates the optimal size of the WORK array, returns
@@ -177,10 +177,10 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realOTHEReigen
+*> \ingroup doubleOTHEReigen
 *
 *  =====================================================================
-      SUBROUTINE SGGGLM_QZ( N, M, P, A, LDA, B, LDB, D, X, Y, WORK,
+      SUBROUTINE DGGGLM_TIME( N, M, P, A, LDA, B, LDB, D, X, Y, WORK,
      $                   LWORK, INFO )
 *
 *  -- LAPACK driver routine --
@@ -191,28 +191,30 @@
       INTEGER            INFO, LDA, LDB, LWORK, M, N, P
 *     ..
 *     .. Array Arguments ..
-      REAL               A( LDA, * ), B( LDB, * ), D( * ), WORK( * ),
+      DOUBLE PRECISION   A( LDA, * ), B( LDB, * ), D( * ), WORK( * ),
      $                   X( * ), Y( * )
 *     ..
 *
 *  ===================================================================
 *
 *     .. Parameters ..
-      REAL               ZERO, ONE
-      PARAMETER          ( ZERO = 0.0E+0, ONE = 1.0E+0 )
+      DOUBLE PRECISION   ZERO, ONE
+      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
 *     ..
 *     .. Local Scalars ..
       LOGICAL            LQUERY
       INTEGER            I, LOPT, LWKMIN, LWKOPT, NB, NB1, NB2, NB3,
      $                   NB4, NP
+      DOUBLE PRECISION   TIME( 2 ), START, OVER
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           SCOPY, SGEMV, SGGQRF_QL, SORMQR, SORMRQ, STRTRS,
-     $                   XERBLA
+      EXTERNAL           DCOPY, DGEMV, DGGQRF, DORMQR, DORMRQ, DTRTRS,
+     $                   XERBLA, DGGQRF_TIME
 *     ..
 *     .. External Functions ..
       INTEGER            ILAENV
-      EXTERNAL           ILAENV
+      DOUBLE PRECISION   TIC
+      EXTERNAL           ILAENV TIC
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          INT, MAX, MIN
@@ -243,10 +245,10 @@
             LWKMIN = 1
             LWKOPT = 1
          ELSE
-            NB1 = ILAENV( 1, 'SGEQRF', ' ', N, M, -1, -1 )
-            NB2 = ILAENV( 1, 'SGERQF', ' ', N, M, -1, -1 )
-            NB3 = ILAENV( 1, 'SORMQR', ' ', N, M, P, -1 )
-            NB4 = ILAENV( 1, 'SORMRQ', ' ', N, M, P, -1 )
+            NB1 = ILAENV( 1, 'DGEQRF', ' ', N, M, -1, -1 )
+            NB2 = ILAENV( 1, 'DGERQF', ' ', N, M, -1, -1 )
+            NB3 = ILAENV( 1, 'DORMQR', ' ', N, M, P, -1 )
+            NB4 = ILAENV( 1, 'DORMRQ', ' ', N, M, P, -1 )
             NB = MAX( NB1, NB2, NB3, NB4 )
             LWKMIN = M + N + P
             LWKOPT = M + NP + MAX( N, P )*NB
@@ -259,7 +261,7 @@
       END IF
 *
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'SGGGLM', -INFO )
+         CALL XERBLA( 'DGGGLM', -INFO )
          RETURN
       ELSE IF( LQUERY ) THEN
          RETURN
@@ -286,21 +288,27 @@
 *     where R11 and T22 are upper triangular, and Q and Z are
 *     orthogonal.
 *
-      CALL SGGQRF_QL( N, M, P, A, LDA, WORK, B, LDB, WORK( M+1 ),
+      START = TIC()
+      CALL DGGQRF_TIME( N, M, P, A, LDA, WORK, B, LDB, WORK( M+1 ),
      $             WORK( M+NP+1 ), LWORK-M-NP, INFO )
-      LOPT = WORK( M+NP+1 )
+      LOPT = INT( WORK( M+NP+1 ) )
+      OVER = TIC()
+      PRINT *, OVER-START
+      START = TIC()
 *
 *     Update left-hand-side vector d = Q**T*d = ( d1 ) M
 *                                               ( d2 ) N-M
 *
-      CALL SORMQR( 'Left', 'Transpose', N, 1, M, A, LDA, WORK, D,
+      CALL DORMQR( 'Left', 'Transpose', N, 1, M, A, LDA, WORK, D,
      $             MAX( 1, N ), WORK( M+NP+1 ), LWORK-M-NP, INFO )
       LOPT = MAX( LOPT, INT( WORK( M+NP+1 ) ) )
+      OVER = TIC()
+      PRINT *, OVER-START
 *
 *     Solve T22*y2 = d2 for y2
 *
       IF( N.GT.M ) THEN
-         CALL STRTRS( 'Upper', 'No transpose', 'Non unit', N-M, 1,
+         CALL DTRTRS( 'Upper', 'No transpose', 'Non unit', N-M, 1,
      $                B( M+1, M+P-N+1 ), LDB, D( M+1 ), N-M, INFO )
 *
          IF( INFO.GT.0 ) THEN
@@ -308,7 +316,7 @@
             RETURN
          END IF
 *
-         CALL SCOPY( N-M, D( M+1 ), 1, Y( M+P-N+1 ), 1 )
+         CALL DCOPY( N-M, D( M+1 ), 1, Y( M+P-N+1 ), 1 )
       END IF
 *
 *     Set y1 = 0
@@ -319,13 +327,13 @@
 *
 *     Update d1 = d1 - T12*y2
 *
-      CALL SGEMV( 'No transpose', M, N-M, -ONE, B( 1, M+P-N+1 ), LDB,
+      CALL DGEMV( 'No transpose', M, N-M, -ONE, B( 1, M+P-N+1 ), LDB,
      $            Y( M+P-N+1 ), 1, ONE, D, 1 )
 *
 *     Solve triangular system: R11*x = d1
 *
       IF( M.GT.0 ) THEN
-         CALL STRTRS( 'Upper', 'No Transpose', 'Non unit', M, 1, A, LDA,
+         CALL DTRTRS( 'Upper', 'No Transpose', 'Non unit', M, 1, A, LDA,
      $                D, M, INFO )
 *
          IF( INFO.GT.0 ) THEN
@@ -335,18 +343,18 @@
 *
 *        Copy D to X
 *
-         CALL SCOPY( M, D, 1, X, 1 )
+         CALL DCOPY( M, D, 1, X, 1 )
       END IF
 *
 *     Backward transformation y = Z**T *y
 *
-      CALL SORMRQ( 'Left', 'Transpose', P, 1, NP,
+      CALL DORMRQ( 'Left', 'Transpose', P, 1, NP,
      $             B( MAX( 1, N-P+1 ), 1 ), LDB, WORK( M+1 ), Y,
      $             MAX( 1, P ), WORK( M+NP+1 ), LWORK-M-NP, INFO )
-*      WORK( 1 ) = M + NP + MAX( LOPT, INT( WORK( M+NP+1 ) ) )
+      WORK( 1 ) = M + NP + MAX( LOPT, INT( WORK( M+NP+1 ) ) )
 *
       RETURN
 *
-*     End of SGGGLM
+*     End of DGGGLM
 *
       END
